@@ -1,7 +1,13 @@
+from django.contrib.auth import get_user_model
 from django.db import models
+from django.db.models import Q
 from django.utils import timezone
+import requests
+from users.models import CustomUser
+
 
 class Customer(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE,)
     name = models.CharField(max_length=50)
     address = models.CharField(max_length=200)
     cust_number = models.IntegerField(blank=False, null=False)
@@ -23,11 +29,11 @@ class Customer(models.Model):
         self.save()
 
     def __str__(self):
-        return str(self.cust_number)
+        return str(self.user)
 
 # Create your models here.
 class Investment(models.Model):
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='investments')
+    user = models.ForeignKey(Customer, on_delete=models.CASCADE,related_name='investment')
     category = models.CharField(max_length=50)
     description = models.CharField(max_length=200)
     acquired_value = models.DecimalField(max_digits=10, decimal_places=2)
@@ -44,13 +50,13 @@ class Investment(models.Model):
         self.save()
 
     def __str__(self):
-        return str(self.customer)
+        return str(self.user)
 
     def results_by_investment(self):
         return self.recent_value - self.acquired_value
 
 class Stock(models.Model):
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='stocks')
+    user = models.ForeignKey(Customer, on_delete=models.CASCADE,related_name='stock')
     symbol = models.CharField(max_length=10)
     name = models.CharField(max_length=50)
     shares = models.DecimalField (max_digits=10, decimal_places=1)
@@ -62,7 +68,25 @@ class Stock(models.Model):
         self.save()
 
     def __str__(self):
-        return str(self.customer)
+        return str(self.user)
+
+    def current_stock_price(self):
+        json_data = {}
+        symbol_f = str(self.symbol)
+        main_api = 'https://www.alphavantage.co/query?function=GLOBAL_QUOTE&amp;symbol='
+        api_key = '&interval=1min&apikey= AH1BJBJQ6QI8EGJ4'
+        url = main_api + symbol_f + api_key
+        json_data = requests.get(url).json()
+        open_price = float(json_data["Global Quote"]["02. open"])
+        share_value = open_price
+        return share_value
+
+    def current_stock_value(self):
+        return float(self.current_stock_price()) * float(self.shares)
 
     def initial_stock_value(self):
         return self.shares * self.purchase_price
+
+
+    def final_result(self):
+        return float(self.current_stock_value()) - float(self.initial_stock_value())

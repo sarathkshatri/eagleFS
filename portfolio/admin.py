@@ -10,16 +10,16 @@ class CustomerList(admin.ModelAdmin):
 
 
 class InvestmentList(admin.ModelAdmin):
-    list_display = ('customer', 'category', 'description', 'recent_value')
-    list_filter = ('customer', 'category')
-    search_fields = ('customer', 'category')
-    ordering = ['customer']
+    list_display = ('user', 'category', 'description', 'recent_value')
+    list_filter = ('user', 'category')
+    search_fields = ('user', 'category')
+    ordering = ['user']
 
 class StockList(admin.ModelAdmin):
-    list_display = ('customer','symbol', 'name', 'shares', 'purchase_price')
-    list_filter = ('customer','symbol', 'name')
-    search_fields = ('customer','symbol', 'name')
-    ordering = ['customer']
+    list_display = ('user','symbol', 'name', 'shares', 'purchase_price')
+    list_filter = ('user','symbol', 'name')
+    search_fields = ('user','symbol', 'name')
+    ordering = ['user']
 
 admin.site.register(Customer,CustomerList)
 admin.site.register(Investment, InvestmentList)

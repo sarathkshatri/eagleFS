@@ -1,10 +1,25 @@
+import decimal
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.http import HttpResponse
 from django.shortcuts import render, get_object_or_404, redirect
+from django.template.loader import get_template
 from django.views import generic
-
+from django.db.models import Sum
+try:
+    import simplejson as json
+except ImportError:
+    import json
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from .serializers import CustomerSerializer
 from .models import *
 from .forms import *
+from django.views.generic import View
+from .utils import render_to_pdf
+from django.contrib.auth.decorators import login_required, user_passes_test
 
 @login_required
 def customer_list(request):
@@ -12,6 +27,7 @@ def customer_list(request):
     customer = Customer.objects.all()
     return render(request, 'portfolio/customer_list.html',{'customer' :customer})
 
+@user_passes_test(lambda user: user.is_superuser or user.is_FinancialAdvisor)
 @login_required
 def customer_edit(request, pk):
    customer = get_object_or_404(Customer, pk=pk)
@@ -28,6 +44,7 @@ def customer_edit(request, pk):
        customerform = CustomerForm(instance=customer)
    return render(request, 'portfolio/customer_edit.html', {'customerform': customerform})
 
+@user_passes_test(lambda user: user.is_superuser or user.is_FinancialAdvisor)
 @login_required
 def customer_delete(request, pk):
    customer = get_object_or_404(Customer, pk=pk)
@@ -39,11 +56,13 @@ def home(request):
                  {'portfolio': home})
 
 
+@login_required
 def stock_list(request):
     stock = Stock.objects.all()
     return render(request, 'portfolio/stock_list.html', {'stock':stock})
 
-
+@user_passes_test(lambda user: user.is_superuser or user.is_FinancialAdvisor)
+@login_required
 def stock_edit(request, pk):
     stock = get_object_or_404(Stock,pk = pk)
     if request.method == 'POST':
@@ -59,7 +78,8 @@ def stock_edit(request, pk):
         stockform = StockForm(instance=stock)
         return render(request, 'portfolio/stock_edit.html', {'stockform': stockform})
 
-
+@user_passes_test(lambda user: user.is_superuser or user.is_FinancialAdvisor)
+@login_required
 def stock_new(request):
     if request.method == 'POST':
         form = StockForm(request.POST)
@@ -76,18 +96,20 @@ def stock_new(request):
         return render(request, 'portfolio/stock_new.html', {'stockform': stockform})
 
 
+@user_passes_test(lambda user: user.is_superuser or user.is_FinancialAdvisor)
 @login_required
 def stock_delete(request, pk):
    stock = get_object_or_404(Stock, pk=pk)
    stock.delete()
    return redirect('/stock_list/')
 
-
+@login_required
 def investment_list(request):
     investment = Investment.objects.all()
     return render(request, 'portfolio/investment_list.html', {'investment':investment})
 
-
+@user_passes_test(lambda user: user.is_superuser or user.is_FinancialAdvisor)
+@login_required
 def investment_edit(request, pk):
     investment = get_object_or_404(Investment,pk = pk)
     if request.method == 'POST':
@@ -103,7 +125,8 @@ def investment_edit(request, pk):
         investmentform = InvestmentForm(instance=investment)
         return render(request, 'portfolio/investment_edit.html', {'investmentform': investmentform})
 
-
+@user_passes_test(lambda user: user.is_superuser or user.is_FinancialAdvisor)
+@login_required
 def investment_new(request):
     if request.method == 'POST':
         form = InvestmentForm(request.POST)
@@ -120,6 +143,7 @@ def investment_new(request):
         return render(request, 'portfolio/investment_new.html', {'investmentform': investmentform})
 
 
+@user_passes_test(lambda user: user.is_superuser or user.is_FinancialAdvisor)
 @login_required
 def investment_delete(request, pk):
    investment = get_object_or_404(Investment, pk=pk)
@@ -127,8 +151,111 @@ def investment_delete(request, pk):
    return redirect('/investment_list/')
 
 @login_required
-def portfolio_list(request, pk):
-    customer = get_object_or_404(Customer,pk=pk)
-    stock = Stock.objects.filter(customer=customer)
-    return render(request,'portfolio/portfolio_list.html',{'stock':stock})
+def portfolio(request,pk):
+   customer = get_object_or_404(Customer, pk=pk)
+   customers = Customer.objects.filter(created_date__lte=timezone.now())
+   investments =Investment.objects.filter(user=pk)
+   stocks = Stock.objects.filter(user=pk)
+   sum_recent_value = Investment.objects.filter(user=customer).aggregate(Sum('recent_value'))
+   sum_acquired_value = Investment.objects.filter(user=customer).aggregate(Sum('acquired_value'))
+   sum_current_stocks_value = 0
+   sum_of_initial_stock_value = 0
+   sum_current_investment_value = 0
+   sum_of_initial_investment_value = 0
+   # Loop through each stock and add the value to the total
+   for stock in stocks:
+        sum_current_stocks_value += stock.current_stock_value()
+        sum_of_initial_stock_value += stock.initial_stock_value()
 
+   result = decimal.Decimal(sum_current_stocks_value) - (sum_of_initial_stock_value)
+
+   for investment in investments:
+       sum_current_investment_value += investment.recent_value
+       sum_of_initial_investment_value += investment.acquired_value
+
+   result1 = sum_current_investment_value - sum_of_initial_investment_value
+
+   Total_current_investments = float(sum_current_stocks_value) + float(sum_current_investment_value)
+   Total_initial_investmensts =  float(sum_of_initial_investment_value) + float(sum_of_initial_stock_value)
+   Grand_total = result + result1
+
+   return render(request, 'portfolio/portfolio.html', { 'customer':customer,
+                                                        'customers': customers,
+                                                       'investments': investments,
+                                                       'stocks': stocks,
+                                                       'sum_acquired_value': sum_acquired_value,
+                                                       'sum_recent_value': sum_recent_value,
+                                                       'result': result,
+                                                        'sum_current_stocks_value': sum_current_stocks_value,
+                                                        'sum_of_initial_stock_value': sum_of_initial_stock_value,
+                                                       'sum_current_investment_value':sum_current_investment_value,
+                                                       'sum_of_initial_investment_value':sum_of_initial_investment_value,
+                                                       'result1':result1,
+                                                       'Total_current_investments':Total_current_investments,
+                                                       'Total_initial_investmensts': Total_initial_investmensts,
+                                                       'Grand_total':Grand_total})
+
+
+class CustomerList(APIView):
+
+    def get(self,request):
+        customers_json = Customer.objects.all()
+        serializer = CustomerSerializer(customers_json, many=True)
+        return Response(serializer.data)
+
+
+def generate_pdf_view(request,pk, *args, **kwargs):
+    customer = get_object_or_404(Customer, pk=pk)
+    customers = Customer.objects.filter(created_date__lte=timezone.now())
+    investments = Investment.objects.filter(user=pk)
+    stocks = Stock.objects.filter(user=pk)
+    sum_recent_value = Investment.objects.filter(user=customer).aggregate(Sum('recent_value'))
+    sum_acquired_value = Investment.objects.filter(user=customer).aggregate(Sum('acquired_value'))
+    sum_current_stocks_value = 0
+    sum_of_initial_stock_value = 0
+    sum_current_investment_value = 0
+    sum_of_initial_investment_value = 0
+    # Loop through each stock and add the value to the total
+    for stock in stocks:
+        sum_current_stocks_value += stock.current_stock_value()
+        sum_of_initial_stock_value += stock.initial_stock_value()
+
+    result = decimal.Decimal(sum_current_stocks_value) - (sum_of_initial_stock_value)
+
+    for investment in investments:
+        sum_current_investment_value += investment.recent_value
+        sum_of_initial_investment_value += investment.acquired_value
+
+    result1 = sum_current_investment_value - sum_of_initial_investment_value
+
+    Total_current_investments = float(sum_current_stocks_value) + float(sum_current_investment_value)
+    Total_initial_investmensts = float(sum_of_initial_investment_value) + float(sum_of_initial_stock_value)
+    Grand_total = result + result1
+
+    template = get_template('portfolio/convert_pdf.html')
+    context = {'customers': customers,
+                'investments': investments,
+                 'stocks': stocks,
+                 'sum_acquired_value': sum_acquired_value,
+                  'sum_recent_value': sum_recent_value,
+                   'result': result,
+                 'sum_current_stocks_value': sum_current_stocks_value,
+                'sum_of_initial_stock_value': sum_of_initial_stock_value,
+                'sum_current_investment_value':sum_current_investment_value,
+                'sum_of_initial_investment_value':sum_of_initial_investment_value,
+                'result1':result1,
+                'Total_current_investments':Total_current_investments,
+                'Total_initial_investmensts': Total_initial_investmensts,
+                'Grand_total':Grand_total}
+    html = template.render(context)
+    pdf = render_to_pdf('portfolio/convert_pdf.html', context)
+    if pdf:
+        response = HttpResponse(pdf, content_type='application/pdf')
+        filename = "Customers_%s.pdf" %("portfolio")
+        content = "inline; filename='%s'" %(filename)
+        download = request.GET.get("download")
+        if download:
+            content = "attachment; filename='%s'" %(filename)
+        response['Content-Disposition'] = content
+        return response
+    return HttpResponse("Not found")

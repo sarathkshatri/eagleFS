@@ -7,7 +7,7 @@
     <p class="card-text">Eagle Financial Services, your Midwest Financial Services Partner.</p>
   </div>
 </div>
-
+{% if request.user.is_superuser or request.user.is_FinancialAdvisor %}
 <div  class="table-responsive text-nowrap">
   <table class="table table-striped">
     <thead class="thead-light">
@@ -27,7 +27,7 @@
      {% for investment in investment %}
         <tr>
           <th scope="row">{{forloop.counter}}</th>
-           <td>{{ investment.customer }}</td>
+           <td>{{ investment.user }}</td>
            <td>{{ investment.category }}</td>
            <td>{{ investment.description }}</td>
            <td>{{ investment.acquired_value }}</td>
@@ -45,4 +45,38 @@
         <a href="{% url 'portfolio:investment_new' %}"><span class="btn btn-primary">Add Investment</span></a>
     </div>
 </div>
+{% else %}
+<div  class="table-responsive text-nowrap">
+  <table class="table table-striped">
+    <thead class="thead-light">
+      <tr>
+        <th scope="col">#</th>
+        <th scope="col">Customer</th>
+        <th scope="col">Category</th>
+        <th scope="col">Description</th>
+        <th scope="col">Acquired Value</th>
+        <th scope="col">Acquired Date</th>
+        <th scope="col">Recent Value</th>
+        <th scope="col">Recent Date</th>
+      </tr>
+    </thead>
+    <tbody>
+     {% for investment in investment %}
+         {% if investment.user.user == request.user %}
+            <tr>
+              <th scope="row">{{forloop.counter}}</th>
+               <td>{{ investment.user }}</td>
+               <td>{{ investment.category }}</td>
+               <td>{{ investment.description }}</td>
+               <td>{{ investment.acquired_value }}</td>
+               <td>{{ investment.acquired_date }}</td>
+               <td>{{ investment.recent_value }}</td>
+               <td>{{ investment.recent_date }}</td>
+            </tr>
+         {% endif  %}
+     {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif  %}
 {% endblock content %}
