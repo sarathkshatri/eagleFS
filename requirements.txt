@@ -10,3 +10,4 @@ selenium==3.141.0
 whitenoise==5.1.0
 xhtml2pdf==0.2.4
 psycopg2
+gunicorn
