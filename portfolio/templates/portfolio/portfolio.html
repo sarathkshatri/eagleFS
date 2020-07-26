@@ -5,15 +5,15 @@
 {% block content %}
   <div class="card mb-3"style="max-width: 50rem;color:#4B7381;">
   <div class="card-body">
-    <h5 class="card-title"><b>Stocks Information</b></h5>
-    <p class="card-text">Eagle Financial Services, your Midwest Financial Services Partner.</p>
+    <h5 class="card-title text-center"><b>Stocks Information</b></h5>
+    <p class="card-text text-center">Eagle Financial Services, your Midwest Financial Services Partner.</p>
   </div>
 </div>
-      {% if request.user.is_superuser %}
       <a href="{% url 'portfolio:generate_pdf_view' pk=customer.pk %}" class="btn btn-primary" role="button" style="float: right;">Export to PDF</a>
-    {% endif %}
+      <a href="{% url 'portfolio:pie-chart' customer.pk %}" class="btn btn-info" role="button" style="float: left;">Graphical View</a>
 <br>
-<div class="page-header">
+    <br>
+<div class="page-header text-center">
     <h2>Overall Portfolio Performance</h2>
 </div>
 <br>

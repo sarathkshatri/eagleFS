@@ -3,6 +3,8 @@ from . import views
 from django.urls import path
 from rest_framework.urlpatterns import format_suffix_patterns
 
+from .views import ChartData
+
 app_name = 'portfolio'
 urlpatterns = [
     path('', views.home, name='home'),
@@ -21,6 +23,8 @@ urlpatterns = [
     path('customer/<int:pk>/portfolio/', views.portfolio, name='portfolio'),
     path('customers_json/', views.CustomerList.as_view()),
     path('customer/<int:pk>/portfolio/pdf/', views.generate_pdf_view, name='generate_pdf_view'),
+    path('customer/<int:cust_pk>/piechart/', views.pie_chart, name='pie-chart'),
+    path('customer/<int:pk>/bar-chart/',ChartData.as_view(), name = 'chartdata'),
 
 ]
 urlpatterns = format_suffix_patterns(urlpatterns)

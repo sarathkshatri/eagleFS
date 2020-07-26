@@ -2,7 +2,7 @@ import decimal
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, get_object_or_404, redirect
 from django.template.loader import get_template
 from django.views import generic
@@ -20,6 +20,7 @@ from .forms import *
 from django.views.generic import View
 from .utils import render_to_pdf
 from django.contrib.auth.decorators import login_required, user_passes_test
+import json
 
 @login_required
 def customer_list(request):
@@ -259,3 +260,52 @@ def generate_pdf_view(request,pk, *args, **kwargs):
         response['Content-Disposition'] = content
         return response
     return HttpResponse("Not found")
+
+
+def pie_chart(request, cust_pk):
+    labels = []
+    data = []
+
+    customer = get_object_or_404(Customer, pk=cust_pk)
+    investment = Investment.objects.filter(user = cust_pk)
+    stocks = Stock.objects.filter(user=cust_pk)
+    for investment in investment:
+        labels.append(investment.description)
+        data.append(int(investment.recent_value))
+    for stock in stocks:
+        labels.append(stock.symbol)
+        data.append(int(stock.current_stock_value()))
+
+    return render(request, 'portfolio/pie_chart.html', {
+        'labels': labels,
+        'data': data,
+        'customer':customer,
+    })
+
+
+class ChartData(APIView):
+    authentication_classes = []
+    permission_classes = []
+
+    def get(self,request, pk, format=None):
+        labels1 = []
+        data1 = []
+        customer = get_object_or_404(Customer, pk=pk)
+        investments = Investment.objects.filter(user=pk)
+        stocks = Stock.objects.filter(user=pk)
+        for investment in investments:
+            labels1.append(investment.description)
+            data1.append(int(investment.recent_value))
+
+        for stock in stocks:
+            labels1.append(stock.symbol)
+            data1.append(int(stock.current_stock_value()))
+
+        data1 = {
+            'labels1': labels1,
+            'data1': data1
+        }
+
+        return Response(data1)
+
+
