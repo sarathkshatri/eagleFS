@@ -204,7 +204,7 @@ class CustomerList(APIView):
         serializer = CustomerSerializer(customers_json, many=True)
         return Response(serializer.data)
 
-
+@login_required
 def generate_pdf_view(request,pk, *args, **kwargs):
     customer = get_object_or_404(Customer, pk=pk)
     customers = Customer.objects.filter(created_date__lte=timezone.now())
@@ -261,7 +261,7 @@ def generate_pdf_view(request,pk, *args, **kwargs):
         return response
     return HttpResponse("Not found")
 
-
+@login_required
 def pie_chart(request, cust_pk):
     labels = []
     data = []
